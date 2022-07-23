@@ -49,6 +49,7 @@ Usage: realcugan-ncnn-vulkan -i infile -o outfile [options]...
   -j load:proc:save    thread count for load/proc/save (default=1:2:2) can be 1:2,2,2:2 for multi-gpu
   -x                   enable tta mode
   -f format            output image format (jpg/png/webp, default=ext/png)
+  -q quality level     0-100 for jpeg & webp, png is a lossless format only (default=100)
 ```
 
 - `input-path` and `output-path` accept either file path or directory path
@@ -58,6 +59,7 @@ Usage: realcugan-ncnn-vulkan -i infile -o outfile [options]...
 - `syncgap-mode` = sync gap mode, 0 = no sync, 1 = accurate sync, 2 = rough sync, 3 = very rough sync
 - `load:proc:save` = thread count for the three stages (image decoding + realcugan upscaling + image encoding), using larger values may increase GPU usage and consume more GPU memory. You can tune this configuration with "4:4:4" for many small-size images, and "2:2:2" for large-size images. The default setting usually works fine for most situations. If you find that your GPU is hungry, try increasing thread count to achieve faster processing.
 - `format` = the format of the image to be output, png is better supported, however webp generally yields smaller file sizes, both are losslessly encoded
+- `quality level` = saving jpeg and webp formats using lossy compression alternatively to lossless (lossless=100), less means smaller file size
 
 If you encounter a crash or error, try upgrading your GPU driver:
 
