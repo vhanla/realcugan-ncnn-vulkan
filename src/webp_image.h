@@ -48,7 +48,7 @@ unsigned char* webp_load(const unsigned char* buffer, int len, int* w, int* h, i
 }
 
 #if _WIN32
-int webp_save(const wchar_t* filepath, int w, int h, int c, const unsigned char* pixeldata)
+int webp_save(const wchar_t* filepath, int w, int h, int c, float quality, const unsigned char* pixeldata)
 #else
 int webp_save(const char* filepath, int w, int h, int c, const unsigned char* pixeldata)
 #endif
@@ -63,7 +63,10 @@ int webp_save(const char* filepath, int w, int h, int c, const unsigned char* pi
     if (c == 3)
     {
 #if _WIN32
-        length = WebPEncodeLosslessBGR(pixeldata, w, h, w * 3, &output);
+        if (quality == 100.00f)
+            length = WebPEncodeLosslessBGR(pixeldata, w, h, w * 3, &output);
+        else
+            length = WebPEncodeBGR(pixeldata, w, h, w * 3, float(quality), &output);
 #else
         length = WebPEncodeLosslessRGB(pixeldata, w, h, w * 3, &output);
 #endif
@@ -71,7 +74,10 @@ int webp_save(const char* filepath, int w, int h, int c, const unsigned char* pi
     else if (c == 4)
     {
 #if _WIN32
-        length = WebPEncodeLosslessBGRA(pixeldata, w, h, w * 4, &output);
+        if (quality == 100.00f)
+            length = WebPEncodeLosslessBGRA(pixeldata, w, h, w * 4, &output);
+        else
+			length = WebPEncodeBGRA(pixeldata, w, h, w * 4, float(quality), &output);
 #else
         length = WebPEncodeLosslessRGBA(pixeldata, w, h, w * 4, &output);
 #endif

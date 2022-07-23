@@ -114,6 +114,7 @@ static void print_usage()
     fprintf(stdout, "  -j load:proc:save    thread count for load/proc/save (default=1:2:2) can be 1:2,2,2:2 for multi-gpu\n");
     fprintf(stdout, "  -x                   enable tta mode\n");
     fprintf(stdout, "  -f format            output image format (jpg/png/webp, default=ext/png)\n");
+    fprintf(stdout, "  -q quality level     0-100 for jpeg & webp, png is a lossless format only (default=100)\n");
 }
 
 class Task
@@ -122,6 +123,7 @@ public:
     int id;
     int webp;
     int scale;
+    float qlevel;
 
     path_t inpath;
     path_t outpath;
@@ -183,6 +185,7 @@ class LoadThreadParams
 {
 public:
     int scale;
+    float qlevel;
     int jobs_load;
 
     // session data
@@ -195,6 +198,7 @@ void* load(void* args)
     const LoadThreadParams* ltp = (const LoadThreadParams*)args;
     const int count = ltp->input_files.size();
     const int scale = ltp->scale;
+    const float qlevel = ltp->qlevel;
 
     #pragma omp parallel for schedule(static,1) num_threads(ltp->jobs_load)
     for (int i=0; i<count; i++)
@@ -274,6 +278,7 @@ void* load(void* args)
             v.id = i;
             v.webp = webp;
             v.scale = scale;
+            v.qlevel = qlevel;
             v.inpath = imagepath;
             v.outpath = ltp->output_files[i];
 
@@ -388,7 +393,7 @@ void* save(void* args)
 
         if (ext == PATHSTR("webp") || ext == PATHSTR("WEBP"))
         {
-            success = webp_save(v.outpath.c_str(), v.outimage.w, v.outimage.h, v.outimage.elempack, (const unsigned char*)v.outimage.data);
+            success = webp_save(v.outpath.c_str(), v.outimage.w, v.outimage.h, v.outimage.elempack, v.qlevel, (const unsigned char*)v.outimage.data);
         }
         else if (ext == PATHSTR("png") || ext == PATHSTR("PNG"))
         {
@@ -401,7 +406,7 @@ void* save(void* args)
         else if (ext == PATHSTR("jpg") || ext == PATHSTR("JPG") || ext == PATHSTR("jpeg") || ext == PATHSTR("JPEG"))
         {
 #if _WIN32
-            success = wic_encode_jpeg_image(v.outpath.c_str(), v.outimage.w, v.outimage.h, v.outimage.elempack, v.outimage.data);
+            success = wic_encode_jpeg_image(v.outpath.c_str(), v.outimage.w, v.outimage.h, v.outimage.elempack, v.qlevel, v.outimage.data);
 #else
             success = stbi_write_jpg(v.outpath.c_str(), v.outimage.w, v.outimage.h, v.outimage.elempack, v.outimage.data, 100);
 #endif
@@ -451,11 +456,12 @@ int main(int argc, char** argv)
     int syncgap = 3;
     int tta_mode = 0;
     path_t format = PATHSTR("png");
+    float qlevel = 100.00f;
 
 #if _WIN32
     setlocale(LC_ALL, "");
     wchar_t opt;
-    while ((opt = getopt(argc, argv, L"i:o:n:s:t:c:m:g:j:f:vxh")) != (wchar_t)-1)
+    while ((opt = getopt(argc, argv, L"i:o:n:s:t:c:m:g:j:f:q:vxh")) != (wchar_t)-1)
     {
         switch (opt)
         {
@@ -489,6 +495,9 @@ int main(int argc, char** argv)
             break;
         case L'f':
             format = optarg;
+            break;
+        case L'q':
+            qlevel = _wtof(optarg);
             break;
         case L'v':
             verbose = 1;
@@ -641,6 +650,12 @@ int main(int argc, char** argv)
     {
         fprintf(stderr, "invalid format argument\n");
         return -1;
+    }
+
+    if (qlevel < 0 || qlevel > 100)
+    {
+        fprintf(stderr, "invalid quality compression level\n");
+		return -1;
     }
 
     // collect input and output filepath
@@ -915,6 +930,7 @@ int main(int argc, char** argv)
             ltp.jobs_load = jobs_load;
             ltp.input_files = input_files;
             ltp.output_files = output_files;
+            ltp.qlevel = qlevel;
 
             ncnn::Thread load_thread(load, (void*)&ltp);
 
